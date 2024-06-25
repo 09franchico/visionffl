@@ -19,6 +19,7 @@ class Main (ft.UserControl):
         self.page.padding = 0
         
         
+        
         self.page.on_route_change = self.route_change
         # self.page.on_view_pop = self.view_pop
         self.page.go(self.page.route)
