@@ -184,6 +184,7 @@ class TemplateMatchingApp:
 
                 roi_zoom = self.captured_image[min(y1, y2):max(y1, y2), min(x1, x2):max(x1, x2)]
                 roi = (min(self.ix, ex), min(self.iy, ey), abs(self.ix - ex), abs(self.iy - ey))
+                
 
 
                 roi_dialog = ROIDialog(self.root)
@@ -193,8 +194,12 @@ class TemplateMatchingApp:
 
                 if roi_name and roi_type:
                     
+                    
+                    if roi_type != "p" and roi_type != "b":
+                        messagebox.showerror("Erro", "Vericar o tipo de componente")
+                        return 
+                    
                     image_circ_detect = self.detect_circles_type(roi_zoom,roi_type)
-
                     if image_circ_detect is not None:
                         roi_zoom_rgb = cv2.cvtColor(image_circ_detect, cv2.COLOR_BGR2RGB)
                         roi_zoom_pil = Image.fromarray(roi_zoom_rgb)
@@ -204,64 +209,25 @@ class TemplateMatchingApp:
                     else:
                         messagebox.showerror("Erro", "Nenhum circulo encontrado!")
                         return 
-                
-                
-                    self.roi_list.append(roi)
-                    self.roi_names.append((roi_name, roi_type))  # Store both name and type
-                    roi_image = image_circ_detect
-                    self.template_images.append(roi_image)
-                    self.captured_image_with_rois = self.display_image_resized.copy()  # Atualiza a imagem com ROIs desenhadas
-                    for idx, r in enumerate(self.roi_list):
-                        cv2.rectangle(self.captured_image_with_rois, (r[0], r[1]), (r[0]+r[2], r[1]+r[3]), (0, 255, 0), 1)
-                        name, type_ = self.roi_names[idx]
-                        cv2.putText(self.captured_image_with_rois, f"{name} ({type_})", (r[0], r[1] + r[3] + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (197,29,239), 1, cv2.LINE_AA)
+                    
+                    confirm = messagebox.askyesno("Confirmação", "Você deseja salvar esta ROI como template?")
+                    if confirm:
+                        self.roi_list.append(roi)
+                        self.roi_names.append((roi_name, roi_type))  # Store both name and type
+                        roi_image = image_circ_detect
+                        self.template_images.append(roi_image)
+                        self.captured_image_with_rois = self.display_image_resized.copy()  # Atualiza a imagem com ROIs desenhadas
+                        for idx, r in enumerate(self.roi_list):
+                            cv2.rectangle(self.captured_image_with_rois, (r[0], r[1]), (r[0]+r[2], r[1]+r[3]), (0, 255, 0), 1)
+                            name, type_ = self.roi_names[idx]
+                            cv2.putText(self.captured_image_with_rois, f"{name}", (r[0], r[1] + r[3] + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (197,29,239), 1, cv2.LINE_AA)
 
-                    self.display_image(self.captured_image_with_rois)
-                    messagebox.showinfo("Info", "ROI selecionada e salva como template.")
+                        self.display_image(self.captured_image_with_rois)
                         
-
-    # def save_roi(self, event):
-    #     if self.is_drawing and self.captured_image is not None:
-    #         self.is_drawing = False
-    #         ex, ey = event.x, event.y
-    #         if self.ix != ex and self.iy != ey:
-                
-    #             x1, y1 = int(self.ix * self.captured_image.shape[1] / self.display_image_resized.shape[1]), int(self.iy * self.captured_image.shape[0] / self.display_image_resized.shape[0])
-    #             x2, y2 = int(event.x * self.captured_image.shape[1] / self.display_image_resized.shape[1]), int(event.y * self.captured_image.shape[0] / self.display_image_resized.shape[0])
-                
-    #             roi_zoom = self.captured_image[min(y1, y2):max(y1, y2), min(x1, x2):max(x1, x2)]
-    #             roi = (min(self.ix, ex), min(self.iy, ey), abs(self.ix - ex), abs(self.iy - ey))
-                
-    #             image_circ_detect = self.detect_circles(roi_zoom)
-                
             
-    #             if image_circ_detect is not None:
-    #                 roi_zoom_rgb = cv2.cvtColor(image_circ_detect, cv2.COLOR_BGR2RGB)
-    #                 roi_zoom_pil = Image.fromarray(roi_zoom_rgb)
-    #                 roi_zoom_tk = ImageTk.PhotoImage(roi_zoom_pil)
-    #                 self.zoom_label_circulo.configure(image=roi_zoom_tk)
-    #                 self.zoom_label_circulo.image =roi_zoom_tk
                     
-    #             else:
-    #                  messagebox.showerror("Erro", "Nenhum circulo encontrado!")
-    #                  return 
                     
-                
-    #             roi_name = simpledialog.askstring("Input", "Nome da ROI:")
-                
-    #             if roi_name:
-    #                 self.roi_list.append(roi)
-    #                 self.roi_names.append(roi_name)
-    #                 # roi_image = roi_zoom
-    #                 roi_image = image_circ_detect
-    #                 self.template_images.append(roi_image)
-    #                 self.captured_image_with_rois = self.display_image_resized.copy()  # Atualiza a imagem com ROIs desenhadas
-    #                 for idx, r in enumerate(self.roi_list):
-    #                     cv2.rectangle(self.captured_image_with_rois, (r[0], r[1]), (r[0]+r[2], r[1]+r[3]), (0, 255, 0), 1)
-    #                     cv2.putText(self.captured_image_with_rois, self.roi_names[idx], (r[0], r[1] + r[3] + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (197,29,239), 1, cv2.LINE_AA)
-
-    #                 self.display_image(self.captured_image_with_rois)
-    #                 messagebox.showinfo("Info", "ROI selecionada e salva como template.")
+                    
 
     def start_matching_thread(self):
         if not self.template_images or self.captured_image is None:
@@ -388,7 +354,7 @@ class TemplateMatchingApp:
 
             # Pegar a imagem template correspondente
             template_image = self.template_images[idx]
-            template_name = self.roi_names[idx]
+            template_name, tipys = self.roi_names[idx]
 
             try:
                 
@@ -488,20 +454,7 @@ class TemplateMatchingApp:
             center_x = cx[0]
             center_y = cy[0]
             radius = radii[0]
-            
-            # scale_factor = 2
-            # radius = int(radius * scale_factor)
-            
-            #  # Garantindo que os índices de recorte não saiam dos limites da imagem
-            # minr = max(0, int(center_y - radius))
-            # maxr = min(imagem.shape[0], int(center_y + radius))
-            # minc = max(0, int(center_x - radius))
-            # maxc = min(imagem.shape[1], int(center_x + radius))
-            
-            # # Recorta a região da imagem que contém o círculo
-            # imagem_recortada = imagem[minr:maxr, minc:maxc]
-            
-            # # Recorta a região da imagem que contém o círculo
+        
             imagem_recortada = imagem[int(center_y - radius):int(center_y + radius), 
                                       int(center_x - radius):int(center_x + radius)]
             
@@ -624,10 +577,12 @@ class TemplateMatchingApp:
 
             self.captured_image_with_rois = self.display_image_resized.copy()  # Copia inicial da imagem capturada
             for idx, roi in enumerate(self.roi_list):
+                
+                name, tipy = self.roi_names[idx]
                 cv2.rectangle(self.captured_image_with_rois, (roi[0], roi[1]), 
                               (roi[0]+roi[2], roi[1]+roi[3]), 
                               (0, 255, 0), 1)
-                cv2.putText(self.captured_image_with_rois, self.roi_names[idx], 
+                cv2.putText(self.captured_image_with_rois, name, 
                             (roi[0], roi[1] + roi[3] + 10), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.3, (197,29,239), 1, cv2.LINE_AA)
 
@@ -664,6 +619,11 @@ class ROIDialog(simpledialog.Dialog):
     def apply(self):
         self.roi_name = self.name_entry.get()
         self.roi_type = self.type_entry.get()
+        
+    def destroy(self) -> None:
+        self.roi_name = self.name_entry.get()
+        self.roi_type = self.type_entry.get()
+        return super().destroy()
 
 
 
