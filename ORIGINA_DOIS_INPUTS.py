@@ -76,10 +76,17 @@ class TemplateMatchingApp:
         # Label para mostrar o tempo
         self.time_label = tk.Label(self.control_frame, text="Tempo: 0s", font=('Helvetica', 10))
         self.time_label.grid(row=4, column=0, padx=5, pady=5, columnspan=4)
+        
+        
+        self.frame_image_detect = tk.Frame(self.root)
+        self.frame_image_detect.grid(row=0, column=1, padx=10, pady=10)
  
         
-        self.zoom_label = tk.Label(self.root)
-        self.zoom_label.grid(row=0, column=1, padx=10, pady=10)
+        self.zoom_label = tk.Label(self.frame_image_detect)
+        self.zoom_label.grid(row=0, column=0, padx=10, pady=10)
+        
+        self.zoom_label_circulo = tk.Label(self.frame_image_detect)
+        self.zoom_label_circulo.grid(row=1, column=0, padx=10, pady=10)
 
 
         # Configurar estilo para as tags
@@ -165,33 +172,96 @@ class TemplateMatchingApp:
 
                 self.zoom_label.configure(image=roi_zoom_tk)
                 self.zoom_label.image = roi_zoom_tk
-
+                
+                
     def save_roi(self, event):
         if self.is_drawing and self.captured_image is not None:
             self.is_drawing = False
             ex, ey = event.x, event.y
             if self.ix != ex and self.iy != ey:
-                
                 x1, y1 = int(self.ix * self.captured_image.shape[1] / self.display_image_resized.shape[1]), int(self.iy * self.captured_image.shape[0] / self.display_image_resized.shape[0])
                 x2, y2 = int(event.x * self.captured_image.shape[1] / self.display_image_resized.shape[1]), int(event.y * self.captured_image.shape[0] / self.display_image_resized.shape[0])
-                
+
                 roi_zoom = self.captured_image[min(y1, y2):max(y1, y2), min(x1, x2):max(x1, x2)]
-                
                 roi = (min(self.ix, ex), min(self.iy, ey), abs(self.ix - ex), abs(self.iy - ey))
-                roi_name = simpledialog.askstring("Input", "Nome da ROI:")
+
+
+                roi_dialog = ROIDialog(self.root)
+                roi_name = roi_dialog.roi_name
+                roi_type = roi_dialog.roi_type
                 
-                if roi_name:
+
+                if roi_name and roi_type:
+                    
+                    image_circ_detect = self.detect_circles_type(roi_zoom,roi_type)
+
+                    if image_circ_detect is not None:
+                        roi_zoom_rgb = cv2.cvtColor(image_circ_detect, cv2.COLOR_BGR2RGB)
+                        roi_zoom_pil = Image.fromarray(roi_zoom_rgb)
+                        roi_zoom_tk = ImageTk.PhotoImage(roi_zoom_pil)
+                        self.zoom_label_circulo.configure(image=roi_zoom_tk)
+                        self.zoom_label_circulo.image = roi_zoom_tk
+                    else:
+                        messagebox.showerror("Erro", "Nenhum circulo encontrado!")
+                        return 
+                
+                
                     self.roi_list.append(roi)
-                    self.roi_names.append(roi_name)
-                    roi_image = roi_zoom
+                    self.roi_names.append((roi_name, roi_type))  # Store both name and type
+                    roi_image = image_circ_detect
                     self.template_images.append(roi_image)
                     self.captured_image_with_rois = self.display_image_resized.copy()  # Atualiza a imagem com ROIs desenhadas
                     for idx, r in enumerate(self.roi_list):
                         cv2.rectangle(self.captured_image_with_rois, (r[0], r[1]), (r[0]+r[2], r[1]+r[3]), (0, 255, 0), 1)
-                        cv2.putText(self.captured_image_with_rois, self.roi_names[idx], (r[0], r[1] + r[3] + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (197,29,239), 1, cv2.LINE_AA)
+                        name, type_ = self.roi_names[idx]
+                        cv2.putText(self.captured_image_with_rois, f"{name} ({type_})", (r[0], r[1] + r[3] + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (197,29,239), 1, cv2.LINE_AA)
 
                     self.display_image(self.captured_image_with_rois)
                     messagebox.showinfo("Info", "ROI selecionada e salva como template.")
+                        
+
+    # def save_roi(self, event):
+    #     if self.is_drawing and self.captured_image is not None:
+    #         self.is_drawing = False
+    #         ex, ey = event.x, event.y
+    #         if self.ix != ex and self.iy != ey:
+                
+    #             x1, y1 = int(self.ix * self.captured_image.shape[1] / self.display_image_resized.shape[1]), int(self.iy * self.captured_image.shape[0] / self.display_image_resized.shape[0])
+    #             x2, y2 = int(event.x * self.captured_image.shape[1] / self.display_image_resized.shape[1]), int(event.y * self.captured_image.shape[0] / self.display_image_resized.shape[0])
+                
+    #             roi_zoom = self.captured_image[min(y1, y2):max(y1, y2), min(x1, x2):max(x1, x2)]
+    #             roi = (min(self.ix, ex), min(self.iy, ey), abs(self.ix - ex), abs(self.iy - ey))
+                
+    #             image_circ_detect = self.detect_circles(roi_zoom)
+                
+            
+    #             if image_circ_detect is not None:
+    #                 roi_zoom_rgb = cv2.cvtColor(image_circ_detect, cv2.COLOR_BGR2RGB)
+    #                 roi_zoom_pil = Image.fromarray(roi_zoom_rgb)
+    #                 roi_zoom_tk = ImageTk.PhotoImage(roi_zoom_pil)
+    #                 self.zoom_label_circulo.configure(image=roi_zoom_tk)
+    #                 self.zoom_label_circulo.image =roi_zoom_tk
+                    
+    #             else:
+    #                  messagebox.showerror("Erro", "Nenhum circulo encontrado!")
+    #                  return 
+                    
+                
+    #             roi_name = simpledialog.askstring("Input", "Nome da ROI:")
+                
+    #             if roi_name:
+    #                 self.roi_list.append(roi)
+    #                 self.roi_names.append(roi_name)
+    #                 # roi_image = roi_zoom
+    #                 roi_image = image_circ_detect
+    #                 self.template_images.append(roi_image)
+    #                 self.captured_image_with_rois = self.display_image_resized.copy()  # Atualiza a imagem com ROIs desenhadas
+    #                 for idx, r in enumerate(self.roi_list):
+    #                     cv2.rectangle(self.captured_image_with_rois, (r[0], r[1]), (r[0]+r[2], r[1]+r[3]), (0, 255, 0), 1)
+    #                     cv2.putText(self.captured_image_with_rois, self.roi_names[idx], (r[0], r[1] + r[3] + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (197,29,239), 1, cv2.LINE_AA)
+
+    #                 self.display_image(self.captured_image_with_rois)
+    #                 messagebox.showinfo("Info", "ROI selecionada e salva como template.")
 
     def start_matching_thread(self):
         if not self.template_images or self.captured_image is None:
@@ -265,10 +335,10 @@ class TemplateMatchingApp:
             left = cv2.mean(irect3)
             right = cv2.mean(irect4)
 
-            # if show_pol:
-            #     cv2.circle(img, (a, b), 1, (0, 0, 255), 3)
-            #     cv2.imshow("Detected Circle", img)
-            #     cv2.waitKey(0)
+            if show_pol:
+                cv2.circle(img, (a, b), 1, (0, 0, 255), 3)
+                cv2.imshow("Detected Circle", img)
+                cv2.waitKey(0)
 
             if (top < bottom) and (top < left) and (top < right):
                 ori = 'N'
@@ -294,34 +364,7 @@ class TemplateMatchingApp:
         chi_sqr = 0.5 * np.sum(frac, axis=2)
         similarity = 1 / (chi_sqr + 1.0e-4)
         return similarity
-    
-    
-    
-    def detect_circles_3(self,imagem):
-        # Convertendo para escala de cinza
-        gray_image = color.rgb2gray(imagem)
-        
-        # Definindo o intervalo de radii para a transformada de Hough
-        hough_radii = np.arange(20, 100, 2)
-        
-        # Aplicando a transformada de Hough para detectar círculos e encontrar picos
-        hough_res = transform.hough_circle_peaks(transform.hough_circle(gray_image, hough_radii), 
-                                                hough_radii, total_num_peaks=1)
-        
-        # Verifica se foi encontrado algum círculo
-        if len(hough_res[0]) > 0:
-            center_x = hough_res[2][0]
-            center_y = hough_res[1][0]
-            radius = hough_res[0][0]
-            
-            # Recorta a região da imagem que contém o círculo
-            imagem_recortada = imagem[int(center_y - radius):int(center_y + radius), 
-                                    int(center_x - radius):int(center_x + radius)]
-            
-            return imagem_recortada
-        
-        else:
-            return None
+
             
     
     def match_template(self):
@@ -349,21 +392,15 @@ class TemplateMatchingApp:
 
             try:
                 
-                imagemy = self.detect_circles(template_image)
-                if imagemy is not None:
-                    # cv2.imshow("Detected Circle",imagemy)
-                    # cv2.waitKey(0)
-                    result = cv2.matchTemplate(roi_image, imagemy, cv2.TM_CCOEFF_NORMED)
-                    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-                    print("Valor: ",max_val)
-                    if max_val >= 0.90:  # Limite de confiança
-                        color = (0, 255, 0)  # Verde
-                    else:
-                        color = (0, 0, 255)
-                        all_matches_found = False
+                result = cv2.matchTemplate(roi_image, template_image, cv2.TM_CCOEFF_NORMED)
+                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+                print("Valor: ",max_val)
+                if max_val >= 0.70:  # Limite de confiança
+                    color = (0, 255, 0)  # Verde
                 else:
                     color = (0, 0, 255)
                     all_matches_found = False
+                
                     
                 self.progress['value'] = (idx + 1) * 100 / len(self.template_images)
                 self.root.update_idletasks()
@@ -389,15 +426,12 @@ class TemplateMatchingApp:
 
         self.display_image(frame_array)
         
-    
-        
-        
-    def detect_circles(self, imagem):
+    def detect_circles_type(self, imagem,type):
         # Convertendo para escala de cinza
         gray_image = color.rgb2gray(imagem)
         
         # Aplicando transformada de Hough para detectar círculos
-        edges = feature.canny(gray_image, sigma=2.0, low_threshold=0.5, high_threshold=0.8)
+        edges = feature.canny(gray_image, sigma=2.0, low_threshold=0.1, high_threshold=0.3)
         hough_radii = np.arange(20, 100, 2)
         hough_res = transform.hough_circle(edges, hough_radii)
         
@@ -410,9 +444,68 @@ class TemplateMatchingApp:
             center_y = cy[0]
             radius = radii[0]
             
-            # Recorta a região da imagem que contém o círculo
+            
+            if type == "p":
+                scale_factor = 2
+                radius = int(radius * scale_factor)
+                
+                # Garantindo que os índices de recorte não saiam dos limites da imagem
+                minr = max(0, int(center_y - radius))
+                maxr = min(imagem.shape[0], int(center_y + radius))
+                minc = max(0, int(center_x - radius))
+                maxc = min(imagem.shape[1], int(center_x + radius))
+                
+                # Recorta a região da imagem que contém o círculo
+                imagem_recortada = imagem[minr:maxr, minc:maxc]
+                
+            if type == "b":
+                # # Recorta a região da imagem que contém o círculo
+                imagem_recortada = imagem[int(center_y - radius):int(center_y + radius), 
+                                          int(center_x - radius):int(center_x + radius)]
+                
+
+            
+            return imagem_recortada
+        
+        else:
+            return None
+        
+        
+    def detect_circles(self, imagem):
+        # Convertendo para escala de cinza
+        gray_image = color.rgb2gray(imagem)
+        
+        # Aplicando transformada de Hough para detectar círculos
+        edges = feature.canny(gray_image, sigma=2.0, low_threshold=0.1, high_threshold=0.3)
+        hough_radii = np.arange(20, 100, 2)
+        hough_res = transform.hough_circle(edges, hough_radii)
+        
+        # Encontrando picos na transformada de Hough
+        accums, cx, cy, radii = transform.hough_circle_peaks(hough_res, hough_radii, total_num_peaks=1)
+        
+        # Verifica se foi encontrado algum círculo
+        if len(cx) > 0:
+            center_x = cx[0]
+            center_y = cy[0]
+            radius = radii[0]
+            
+            # scale_factor = 2
+            # radius = int(radius * scale_factor)
+            
+            #  # Garantindo que os índices de recorte não saiam dos limites da imagem
+            # minr = max(0, int(center_y - radius))
+            # maxr = min(imagem.shape[0], int(center_y + radius))
+            # minc = max(0, int(center_x - radius))
+            # maxc = min(imagem.shape[1], int(center_x + radius))
+            
+            # # Recorta a região da imagem que contém o círculo
+            # imagem_recortada = imagem[minr:maxr, minc:maxc]
+            
+            # # Recorta a região da imagem que contém o círculo
             imagem_recortada = imagem[int(center_y - radius):int(center_y + radius), 
                                       int(center_x - radius):int(center_x + radius)]
+            
+
             
             return imagem_recortada
         
@@ -484,11 +577,11 @@ class TemplateMatchingApp:
             # Encontrar correspondências
             matches = match_descriptors(descriptors1, descriptors2, max_ratio=max_ratio, cross_check=True)
             
-            # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
-            # plot_matches(ax, img1_gray, img2_gray, keypoints1, keypoints2, matches)
-            # ax.axis('off')
-            # ax.set_title("Correspondências entre as imagens")
-            # plt.show()
+            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
+            plot_matches(ax, img1_gray, img2_gray, keypoints1, keypoints2, matches)
+            ax.axis('off')
+            ax.set_title("Correspondências entre as imagens")
+            plt.show()
             
             print(f"Número de correspondências detectadas: {len(matches)}")
             
@@ -551,6 +644,29 @@ class TemplateMatchingApp:
         img_data = base64.b64decode(base64_string)
         np_arr = np.frombuffer(img_data, np.uint8)
         return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    
+    
+    
+  
+class ROIDialog(simpledialog.Dialog):
+    def body(self, master):
+        tk.Label(master, text="Nome da ROI:").grid(row=0)
+        tk.Label(master, text="Tipo da ROI:").grid(row=1)
+
+        self.name_entry = tk.Entry(master)
+        self.type_entry = tk.Entry(master)
+
+        self.name_entry.grid(row=0, column=1)
+        self.type_entry.grid(row=1, column=1)
+        
+        return self.name_entry  # initial focus
+
+    def apply(self):
+        self.roi_name = self.name_entry.get()
+        self.roi_type = self.type_entry.get()
+
+
+
 
 if __name__ == "__main__":
     root = tk.Tk()
