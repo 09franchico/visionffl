@@ -354,15 +354,16 @@ class TemplateMatchingApp:
 
             # Pegar a imagem template correspondente
             template_image = self.template_images[idx]
-            template_name, tipys = self.roi_names[idx]
+            template_name, types = self.roi_names[idx]
 
             try:
                 
                 result = cv2.matchTemplate(roi_image, template_image, cv2.TM_CCOEFF_NORMED)
                 min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
                 print("Valor: ",max_val)
-                if max_val >= 0.70:  # Limite de confiança
+                if max_val >= 0.90:  # Limite de confiança
                     color = (0, 255, 0)  # Verde
+                    
                 else:
                     color = (0, 0, 255)
                     all_matches_found = False
@@ -530,11 +531,11 @@ class TemplateMatchingApp:
             # Encontrar correspondências
             matches = match_descriptors(descriptors1, descriptors2, max_ratio=max_ratio, cross_check=True)
             
-            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
-            plot_matches(ax, img1_gray, img2_gray, keypoints1, keypoints2, matches)
-            ax.axis('off')
-            ax.set_title("Correspondências entre as imagens")
-            plt.show()
+            # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
+            # plot_matches(ax, img1_gray, img2_gray, keypoints1, keypoints2, matches)
+            # ax.axis('off')
+            # ax.set_title("Correspondências entre as imagens")
+            # plt.show()
             
             print(f"Número de correspondências detectadas: {len(matches)}")
             
